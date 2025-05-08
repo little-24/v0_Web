@@ -17,6 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { useToast } from "@/hooks/use-toast"
+import { boardsData } from "@/app/boards/data"
 
 export default function CollectionDetailPage({ params }: { params: { id: string } }) {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
@@ -37,6 +38,16 @@ export default function CollectionDetailPage({ params }: { params: { id: string 
     updatedAt: "",
   }
 
+  // Lấy danh sách bảng từ boardsData dựa trên collection.boardCount
+  const collectionBoards = boardsData.slice(0, collection.boardCount).map((board) => ({
+    id: board.id,
+    name: board.name,
+    background: "/placeholder.svg?height=150&width=300&text=" + encodeURIComponent(board.name),
+    color: board.color,
+    updatedAt: "Hôm nay, 10:30",
+    collectionId: collectionId,
+  }))
+
   // Xử lý xóa thành viên
   const handleRemoveMember = (memberId: string) => {
     // Lọc ra thành viên cần xóa
@@ -51,7 +62,7 @@ export default function CollectionDetailPage({ params }: { params: { id: string 
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <div
@@ -128,28 +139,26 @@ export default function CollectionDetailPage({ params }: { params: { id: string 
 
       <h2 className="text-xl font-semibold mt-6">Bảng trong bộ sưu tập</h2>
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-        {collectionBoards
-          .filter((board) => board.collectionId === collectionId)
-          .map((board) => (
-            <Link key={board.id} href={`/board/${board.id}`} className="group">
-              <Card className="overflow-hidden h-full border hover:border-primary transition-colors">
-                <div className="aspect-video w-full relative">
-                  <Image
-                    src={board.background || "/placeholder.svg?height=150&width=300"}
-                    alt={board.name}
-                    width={300}
-                    height={150}
-                    className="w-full h-full object-cover"
-                  />
-                  <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
-                </div>
-                <CardContent className="p-4">
-                  <h3 className="font-medium truncate">{board.name}</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Cập nhật {board.updatedAt}</p>
-                </CardContent>
-              </Card>
-            </Link>
-          ))}
+        {collectionBoards.map((board) => (
+          <Link key={board.id} href={`/board/${board.id}`} className="group">
+            <Card className="overflow-hidden h-full border hover:border-primary transition-colors">
+              <div className="aspect-video w-full relative">
+                <Image
+                  src={board.background || "/placeholder.svg?height=150&width=300"}
+                  alt={board.name}
+                  width={300}
+                  height={150}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-black/20 group-hover:bg-black/30 transition-colors" />
+              </div>
+              <CardContent className="p-4">
+                <h3 className="font-medium truncate">{board.name}</h3>
+                <p className="text-sm text-muted-foreground mt-1">Cập nhật {board.updatedAt}</p>
+              </CardContent>
+            </Card>
+          </Link>
+        ))}
 
         <Link href={`/create-board?collection=${collectionId}`}>
           <Card className="h-full border border-dashed hover:border-primary transition-colors flex flex-col items-center justify-center p-6 text-center">
@@ -160,7 +169,7 @@ export default function CollectionDetailPage({ params }: { params: { id: string 
         </Link>
       </div>
 
-      {collectionBoards.filter((board) => board.collectionId === collectionId).length === 0 && (
+      {collectionBoards.length === 0 && (
         <div className="text-center py-12">
           <h3 className="text-lg font-medium mb-2">Chưa có bảng nào trong bộ sưu tập này</h3>
           <p className="text-muted-foreground mb-6">Hãy tạo bảng đầu tiên cho bộ sưu tập của bạn</p>
@@ -210,74 +219,6 @@ const collections = [
     icon: "T",
     boardCount: 4,
     updatedAt: "hôm nay",
-  },
-]
-
-// Sample boards for each collection
-const collectionBoards = [
-  {
-    id: "1",
-    name: "Chiến dịch quảng cáo Q2",
-    background: "/placeholder.svg?height=150&width=300&text=Marketing",
-    color: "#eb5a46",
-    updatedAt: "Hôm nay, 10:30",
-    collectionId: "1",
-  },
-  {
-    id: "2",
-    name: "Nội dung mạng xã hội",
-    background: "/placeholder.svg?height=150&width=300&text=Social",
-    color: "#eb5a46",
-    updatedAt: "Hôm qua, 14:20",
-    collectionId: "1",
-  },
-  {
-    id: "3",
-    name: "Phân tích thị trường",
-    background: "/placeholder.svg?height=150&width=300&text=Analysis",
-    color: "#eb5a46",
-    updatedAt: "3 ngày trước",
-    collectionId: "1",
-  },
-  {
-    id: "4",
-    name: "Lộ trình phát triển",
-    background: "/placeholder.svg?height=150&width=300&text=Roadmap",
-    color: "#0079bf",
-    updatedAt: "Hôm nay, 08:15",
-    collectionId: "2",
-  },
-  {
-    id: "5",
-    name: "Quản lý backlog",
-    background: "/placeholder.svg?height=150&width=300&text=Backlog",
-    color: "#0079bf",
-    updatedAt: "2 ngày trước",
-    collectionId: "2",
-  },
-  {
-    id: "6",
-    name: "Thiết kế giao diện",
-    background: "/placeholder.svg?height=150&width=300&text=UI",
-    color: "#61bd4f",
-    updatedAt: "Hôm qua, 16:40",
-    collectionId: "3",
-  },
-  {
-    id: "7",
-    name: "Nguyên mẫu sản phẩm",
-    background: "/placeholder.svg?height=150&width=300&text=Prototype",
-    color: "#61bd4f",
-    updatedAt: "4 ngày trước",
-    collectionId: "3",
-  },
-  {
-    id: "8",
-    name: "Hướng dẫn thiết kế",
-    background: "/placeholder.svg?height=150&width=300&text=Guidelines",
-    color: "#61bd4f",
-    updatedAt: "1 tuần trước",
-    collectionId: "3",
   },
 ]
 

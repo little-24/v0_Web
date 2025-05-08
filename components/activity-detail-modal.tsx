@@ -2,60 +2,30 @@
 
 import type React from "react"
 
-import { useState, useEffect, useRef } from "react"
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
+import { useState, useRef, useEffect } from "react"
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { MessageSquare, ThumbsUp, Pencil, Trash2, X, Check } from "lucide-react"
 import Link from "next/link"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-
-export type Comment = {
-  id: string
-  user: {
-    name: string
-    avatar?: string
-    initials: string
-  }
-  text: string
-  time: string
-  isCurrentUser: boolean
-}
-
-export type ActivityDetail = {
-  id: string
-  user: {
-    name: string
-    avatar?: string
-    initials: string
-  }
-  action: string
-  time: string
-  boardId: string
-  boardName: string
-  cardId?: string
-  cardName?: string
-  columnId?: string
-  columnName?: string
-  before?: string
-  after?: string
-  comments: Comment[]
-  liked: boolean
-}
+import { useToast } from "@/hooks/use-toast"
+import type { Activity, Comment } from "@/types"
 
 interface ActivityDetailModalProps {
   isOpen: boolean
   onClose: () => void
-  activity: ActivityDetail | null
-  onActivityUpdate: (updatedActivity: ActivityDetail) => void
+  activity: Activity | null
+  onActivityUpdate: (updatedActivity: Activity) => void
 }
 
 export function ActivityDetailModal({ isOpen, onClose, activity, onActivityUpdate }: ActivityDetailModalProps) {
   const [commentText, setCommentText] = useState("")
-  const [localActivity, setLocalActivity] = useState<ActivityDetail | null>(null)
+  const [localActivity, setLocalActivity] = useState<Activity | null>(null)
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null)
   const [editCommentText, setEditCommentText] = useState("")
   const editInputRef = useRef<HTMLTextAreaElement>(null)
+  const { toast } = useToast()
 
   // Cập nhật localActivity khi activity thay đổi
   useEffect(() => {
@@ -77,17 +47,24 @@ export function ActivityDetailModal({ isOpen, onClose, activity, onActivityUpdat
 
   // Hàm xử lý khi người dùng thích hoạt động
   const handleLike = () => {
+    if (!localActivity) return
+
     const updatedActivity = {
       ...localActivity,
       liked: !localActivity.liked,
     }
     setLocalActivity(updatedActivity)
     onActivityUpdate(updatedActivity)
+
+    toast({
+      title: updatedActivity.liked ? "Đã thích hoạt động" : "Đã bỏ thích hoạt động",
+      duration: 2000,
+    })
   }
 
   // Hàm xử lý khi người dùng gửi bình luận
   const handleSendComment = () => {
-    if (!commentText.trim()) return
+    if (!commentText.trim() || !localActivity) return
 
     // Tạo bình luận mới
     const newComment: Comment = {
@@ -104,7 +81,7 @@ export function ActivityDetailModal({ isOpen, onClose, activity, onActivityUpdat
     // Cập nhật danh sách bình luận
     const updatedActivity = {
       ...localActivity,
-      comments: [...localActivity.comments, newComment],
+      comments: [...(localActivity.comments || []), newComment],
     }
 
     setLocalActivity(updatedActivity)
@@ -112,6 +89,11 @@ export function ActivityDetailModal({ isOpen, onClose, activity, onActivityUpdat
 
     // Xóa nội dung trong ô nhập liệu
     setCommentText("")
+
+    toast({
+      title: "Đã thêm bình luận",
+      duration: 2000,
+    })
   }
 
   // Bắt đầu chỉnh sửa bình luận
@@ -128,7 +110,7 @@ export function ActivityDetailModal({ isOpen, onClose, activity, onActivityUpdat
 
   // Lưu bình luận đã chỉnh sửa
   const handleSaveEditComment = (commentId: string) => {
-    if (!editCommentText.trim()) return
+    if (!editCommentText.trim() || !localActivity || !localActivity.comments) return
 
     const updatedActivity = {
       ...localActivity,
@@ -141,10 +123,17 @@ export function ActivityDetailModal({ isOpen, onClose, activity, onActivityUpdat
     onActivityUpdate(updatedActivity)
     setEditingCommentId(null)
     setEditCommentText("")
+
+    toast({
+      title: "Đã cập nhật bình luận",
+      duration: 2000,
+    })
   }
 
   // Xóa bình luận
   const handleDeleteComment = (commentId: string) => {
+    if (!localActivity || !localActivity.comments) return
+
     const updatedActivity = {
       ...localActivity,
       comments: localActivity.comments.filter((comment) => comment.id !== commentId),
@@ -152,6 +141,11 @@ export function ActivityDetailModal({ isOpen, onClose, activity, onActivityUpdat
 
     setLocalActivity(updatedActivity)
     onActivityUpdate(updatedActivity)
+
+    toast({
+      title: "Đã xóa bình luận",
+      duration: 2000,
+    })
   }
 
   // Xử lý khi người dùng nhấn Enter để gửi bình luận
@@ -175,12 +169,6 @@ export function ActivityDetailModal({ isOpen, onClose, activity, onActivityUpdat
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Chi tiết hoạt động</DialogTitle>
-          <DialogDescription>
-            Hoạt động trên bảng{" "}
-            <Link href={`/board/${localActivity.boardId}`} className="text-primary hover:underline">
-              {localActivity.boardName}
-            </Link>
-          </DialogDescription>
         </DialogHeader>
 
         <div className="py-4">
@@ -199,6 +187,14 @@ export function ActivityDetailModal({ isOpen, onClose, activity, onActivityUpdat
             <p className="text-sm">
               <span className="font-medium">{localActivity.user.name}</span> {localActivity.action}
             </p>
+            {localActivity.boardId && (
+              <Link
+                href={`/board/${localActivity.boardId}`}
+                className="text-sm text-primary hover:underline mt-1 block"
+              >
+                Xem bảng
+              </Link>
+            )}
             {localActivity.before && localActivity.after && (
               <div className="mt-2 text-sm">
                 <div className="flex items-center">
@@ -213,7 +209,7 @@ export function ActivityDetailModal({ isOpen, onClose, activity, onActivityUpdat
             )}
           </div>
 
-          {localActivity.comments.length > 0 && (
+          {localActivity.comments && localActivity.comments.length > 0 && (
             <div className="space-y-3 mb-4">
               <h4 className="text-sm font-medium">Bình luận</h4>
               {localActivity.comments.map((comment) => (

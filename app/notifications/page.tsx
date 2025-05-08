@@ -2,55 +2,30 @@
 
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
 import { Check, Trash2, Eye, EyeOff, Filter, Clock } from "lucide-react"
-import Link from "next/link"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuGroup,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import { Switch } from "@/components/ui/switch"
-import { Label } from "@/components/ui/label"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useToast } from "@/hooks/use-toast"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-
-// Định nghĩa kiểu dữ liệu cho thông báo và hoạt động
-type User = {
-  id: string
-  name: string
-  avatar?: string
-  initials: string
-  email?: string
-}
-
-type Activity = {
-  id: string
-  user: User
-  action: string
-  time: string
-  boardId: string
-  boardName: string
-  read: boolean
-  type: "card" | "board" | "comment" | "member" | "other"
-  timestamp: number // Thời gian tạo hoạt động (milliseconds)
-}
-
-// Khóa lưu trữ trong localStorage
-const ACTIVITIES_STORAGE_KEY = "project_management_activities"
-const NOTIFICATIONS_STORAGE_KEY = "project_management_notifications"
+import { ActivityDetailModal } from "@/components/activity-detail-modal"
+import type { Activity } from "@/types"
 
 export default function NotificationsPage() {
-  const [activities, setActivities] = useState<Activity[]>([])
-  const [notifications, setNotifications] = useState<Activity[]>([])
+  const [expandedBoard, setExpandedBoard] = useState<string | null>(null)
   const [filter, setFilter] = useState<string>("all")
   const [showReadOnly, setShowReadOnly] = useState(false)
   const [showUnreadOnly, setShowUnreadOnly] = useState(false)
   const [activeTab, setActiveTab] = useState<string>("notifications")
+  const [activities, setActivities] = useState<Activity[]>([])
+  const [notifications, setNotifications] = useState<Activity[]>([])
+  const [selectedActivity, setSelectedActivity] = useState<Activity | null>(null)
+  const [isActivityModalOpen, setIsActivityModalOpen] = useState(false)
+  const { toast } = useToast()
+
+  // Khóa lưu trữ trong localStorage
+  const ACTIVITIES_STORAGE_KEY = "project_management_activities"
+  const NOTIFICATIONS_STORAGE_KEY = "project_management_notifications"
 
   // Tải hoạt động và thông báo từ localStorage khi component được mount
   useEffect(() => {
@@ -108,6 +83,11 @@ export default function NotificationsPage() {
       read: true,
     }))
     setNotifications(updatedNotifications)
+
+    toast({
+      title: "Đã đánh dấu tất cả là đã đọc",
+      duration: 2000,
+    })
   }
 
   // Đánh dấu tất cả thông báo là chưa đọc
@@ -117,6 +97,11 @@ export default function NotificationsPage() {
       read: false,
     }))
     setNotifications(updatedNotifications)
+
+    toast({
+      title: "Đã đánh dấu tất cả là chưa đọc",
+      duration: 2000,
+    })
   }
 
   // Chuyển đổi trạng thái đọc của một thông báo
@@ -125,17 +110,33 @@ export default function NotificationsPage() {
       notification.id === id ? { ...notification, read: !notification.read } : notification,
     )
     setNotifications(updatedNotifications)
+
+    const notification = notifications.find((n) => n.id === id)
+    toast({
+      title: notification?.read ? "Đã đánh dấu là chưa đọc" : "Đã đánh dấu là đã đọc",
+      duration: 2000,
+    })
   }
 
   // Xóa một thông báo
   const removeNotification = (id: string) => {
     const updatedNotifications = notifications.filter((notification) => notification.id !== id)
     setNotifications(updatedNotifications)
+
+    toast({
+      title: "Đã xóa thông báo",
+      duration: 2000,
+    })
   }
 
   // Xóa tất cả thông báo
   const clearAllNotifications = () => {
     setNotifications([])
+
+    toast({
+      title: "Đã xóa tất cả thông báo",
+      duration: 2000,
+    })
   }
 
   // Lọc thông báo theo loại
@@ -173,10 +174,31 @@ export default function NotificationsPage() {
   })
 
   // Sắp xếp hoạt động theo thời gian (mới nhất lên đầu)
-  const sortedActivities = [...activities].sort((a, b) => b.timestamp - a.timestamp)
+  const sortedActivities = [...activities].sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0))
 
   // Đếm số thông báo chưa đọc
   const unreadCount = notifications.filter((notification) => !notification.read).length
+
+  // Xử lý khi click vào một hoạt động
+  const handleActivityClick = (activity: Activity) => {
+    setSelectedActivity(activity)
+    setIsActivityModalOpen(true)
+  }
+
+  // Xử lý cập nhật hoạt động
+  const handleActivityUpdate = (updatedActivity: Activity) => {
+    // Cập nhật trong danh sách hoạt động
+    const updatedActivities = activities.map((activity) =>
+      activity.id === updatedActivity.id ? updatedActivity : activity,
+    )
+    setActivities(updatedActivities)
+
+    // Cập nhật trong danh sách thông báo nếu có
+    const updatedNotifications = notifications.map((notification) =>
+      notification.id === updatedActivity.id ? updatedActivity : notification,
+    )
+    setNotifications(updatedNotifications)
+  }
 
   return (
     <div className="space-y-6">
@@ -191,52 +213,21 @@ export default function NotificationsPage() {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56">
-              <DropdownMenuLabel>Lọc theo loại</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup>
-                <DropdownMenuItem onClick={() => handleFilterChange("all")}>
-                  <span className={filter === "all" ? "font-bold" : ""}>Tất cả</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleFilterChange("card")}>
-                  <span className={filter === "card" ? "font-bold" : ""}>Thẻ</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleFilterChange("board")}>
-                  <span className={filter === "board" ? "font-bold" : ""}>Bảng</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleFilterChange("comment")}>
-                  <span className={filter === "comment" ? "font-bold" : ""}>Bình luận</span>
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleFilterChange("member")}>
-                  <span className={filter === "member" ? "font-bold" : ""}>Thành viên</span>
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuLabel>Lọc theo trạng thái</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <div className="p-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="show-read" className="text-sm">
-                    Chỉ hiển thị đã đọc
-                  </Label>
-                  <Switch
-                    id="show-read"
-                    checked={showReadOnly}
-                    onCheckedChange={(value) => handleReadFilterChange(value, "read")}
-                  />
-                </div>
-              </div>
-              <div className="p-2">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="show-unread" className="text-sm">
-                    Chỉ hiển thị chưa đọc
-                  </Label>
-                  <Switch
-                    id="show-unread"
-                    checked={showUnreadOnly}
-                    onCheckedChange={(value) => handleReadFilterChange(value, "unread")}
-                  />
-                </div>
-              </div>
+              <DropdownMenuItem onClick={() => handleFilterChange("all")}>
+                <span className={filter === "all" ? "font-bold" : ""}>Tất cả</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleFilterChange("card")}>
+                <span className={filter === "card" ? "font-bold" : ""}>Thẻ</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleFilterChange("board")}>
+                <span className={filter === "board" ? "font-bold" : ""}>Bảng</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleFilterChange("comment")}>
+                <span className={filter === "comment" ? "font-bold" : ""}>Bình luận</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleFilterChange("member")}>
+                <span className={filter === "member" ? "font-bold" : ""}>Thành viên</span>
+              </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -292,7 +283,8 @@ export default function NotificationsPage() {
                       key={notification.id}
                       className={`p-3 border rounded-md flex items-start space-x-3 ${
                         notification.read ? "" : "bg-blue-50"
-                      }`}
+                      } hover:bg-gray-50 cursor-pointer`}
+                      onClick={() => handleActivityClick(notification)}
                     >
                       <Avatar className="h-10 w-10">
                         <AvatarImage
@@ -303,18 +295,19 @@ export default function NotificationsPage() {
                       </Avatar>
                       <div className="flex-1">
                         <div className="text-sm">
-                          <Link href={`/board/${notification.boardId}`} className="hover:underline">
-                            <span className="font-medium">{notification.user.name}</span> {notification.action}
-                          </Link>
+                          <span className="font-medium">{notification.user.name}</span> {notification.action}
                         </div>
                         <div className="text-xs text-gray-500 mt-1">{notification.time}</div>
                       </div>
-                      <div className="flex space-x-1">
+                      <div className="flex space-x-1" onClick={(e) => e.stopPropagation()}>
                         <Button
                           variant="ghost"
                           size="sm"
                           className="h-8 text-xs"
-                          onClick={() => toggleReadStatus(notification.id)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            toggleReadStatus(notification.id)
+                          }}
                         >
                           {notification.read ? (
                             <>
@@ -332,7 +325,10 @@ export default function NotificationsPage() {
                           variant="ghost"
                           size="sm"
                           className="h-8 text-xs text-red-500"
-                          onClick={() => removeNotification(notification.id)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            removeNotification(notification.id)
+                          }}
                         >
                           <Trash2 className="h-3 w-3 mr-1" />
                           Xóa
@@ -364,16 +360,18 @@ export default function NotificationsPage() {
                   </div>
                 ) : (
                   sortedActivities.map((activity) => (
-                    <div key={activity.id} className="p-3 border rounded-md flex items-start space-x-3">
+                    <div
+                      key={activity.id}
+                      className="p-3 border rounded-md flex items-start space-x-3 hover:bg-gray-50 cursor-pointer"
+                      onClick={() => handleActivityClick(activity)}
+                    >
                       <Avatar className="h-10 w-10">
                         <AvatarImage src={activity.user.avatar || "/placeholder.svg"} alt={activity.user.name} />
                         <AvatarFallback>{activity.user.initials}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
                         <div className="text-sm">
-                          <Link href={`/board/${activity.boardId}`} className="hover:underline">
-                            <span className="font-medium">{activity.user.name}</span> {activity.action}
-                          </Link>
+                          <span className="font-medium">{activity.user.name}</span> {activity.action}
                         </div>
                         <div className="flex items-center text-xs text-gray-500 mt-1">
                           <Clock className="h-3 w-3 mr-1" />
@@ -388,6 +386,14 @@ export default function NotificationsPage() {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Activity Detail Modal */}
+      <ActivityDetailModal
+        isOpen={isActivityModalOpen}
+        onClose={() => setIsActivityModalOpen(false)}
+        activity={selectedActivity}
+        onActivityUpdate={handleActivityUpdate}
+      />
     </div>
   )
 }
@@ -408,6 +414,8 @@ const sampleActivities: Activity[] = [
     read: false,
     type: "card",
     timestamp: Date.now() - 30 * 60 * 1000,
+    comments: [],
+    liked: false,
   },
   {
     id: "2",
@@ -423,6 +431,8 @@ const sampleActivities: Activity[] = [
     read: false,
     type: "card",
     timestamp: Date.now() - 2 * 60 * 60 * 1000,
+    comments: [],
+    liked: false,
   },
   {
     id: "3",
@@ -438,6 +448,18 @@ const sampleActivities: Activity[] = [
     read: true,
     type: "comment",
     timestamp: Date.now() - 5 * 60 * 60 * 1000,
+    comments: [
+      {
+        id: "comment-1",
+        user: {
+          name: "Lê Văn C",
+          initials: "LC",
+        },
+        text: "Chúng ta nên phân tích thêm về đối thủ X",
+        time: "5 giờ trước",
+      },
+    ],
+    liked: false,
   },
   {
     id: "4",
@@ -453,6 +475,8 @@ const sampleActivities: Activity[] = [
     read: true,
     type: "member",
     timestamp: Date.now() - 24 * 60 * 60 * 1000,
+    comments: [],
+    liked: false,
   },
   {
     id: "5",
@@ -468,6 +492,8 @@ const sampleActivities: Activity[] = [
     read: true,
     type: "card",
     timestamp: Date.now() - 2 * 24 * 60 * 60 * 1000,
+    comments: [],
+    liked: false,
   },
   {
     id: "6",
@@ -483,6 +509,8 @@ const sampleActivities: Activity[] = [
     read: true,
     type: "board",
     timestamp: Date.now() - 3 * 24 * 60 * 60 * 1000,
+    comments: [],
+    liked: false,
   },
   {
     id: "7",
@@ -498,6 +526,8 @@ const sampleActivities: Activity[] = [
     read: true,
     type: "board",
     timestamp: Date.now() - 4 * 24 * 60 * 60 * 1000,
+    comments: [],
+    liked: false,
   },
   {
     id: "8",
@@ -513,5 +543,17 @@ const sampleActivities: Activity[] = [
     read: true,
     type: "comment",
     timestamp: Date.now() - 5 * 24 * 60 * 60 * 1000,
+    comments: [
+      {
+        id: "comment-2",
+        user: {
+          name: "Lê Thị H",
+          initials: "LH",
+        },
+        text: "Logo cần thêm màu sắc tươi sáng hơn",
+        time: "5 ngày trước",
+      },
+    ],
+    liked: false,
   },
 ]

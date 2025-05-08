@@ -9,8 +9,8 @@ import { Toaster } from "@/components/ui/toaster"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "Project Management Board",
-  description: "A project management board application",
+  title: "TaskFlow",
+  description: "Ứng dụng quản lý dự án",
     generator: 'v0.dev'
 }
 
@@ -24,9 +24,9 @@ export default function RootLayout({
       <body className={inter.className}>
         <div className="flex h-screen">
           <Sidebar />
-          <div className="flex flex-col flex-1 overflow-hidden">
+          <div className="flex-1 flex flex-col overflow-hidden">
             <Header />
-            <main className="flex-1 overflow-auto p-4 bg-gray-50">{children}</main>
+            <div className="flex-1 overflow-auto bg-gray-50">{children}</div>
           </div>
         </div>
         <Toaster />
