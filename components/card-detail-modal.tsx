@@ -83,6 +83,8 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
   const [newLabelName, setNewLabelName] = useState("")
   const [newLabelColor, setNewLabelColor] = useState("#0079bf")
   const [isCreatingLabel, setIsCreatingLabel] = useState(false)
+  const [editingLabelId, setEditingLabelId] = useState<string | null>(null)
+  const [editingLabelName, setEditingLabelName] = useState("")
 
   // This will focus the title input when editing mode is enabled
   useEffect(() => {
@@ -125,14 +127,26 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
 
   // Handle date selection
   const handleDateSelect = () => {
+    if (!dueDate) {
+      setIsDatePickerOpen(false)
+      return
+    }
+
+    // Lấy giờ và phút từ selectedTime
+    const [hours, minutes] = selectedTime.split(":").map(Number)
+
+    // Tạo ngày mới với giờ đã chọn
+    const newDueDate = new Date(dueDate)
+    newDueDate.setHours(hours || 0)
+    newDueDate.setMinutes(minutes || 0)
+
+    setDueDate(newDueDate)
     setIsDatePickerOpen(false)
-    onUpdate({ ...card, dueDate })
+    onUpdate({ ...card, dueDate: newDueDate })
 
     toast({
       title: "Đã cập nhật ngày hạn",
-      description: dueDate
-        ? `Ngày hạn của thẻ đã được đặt thành ${format(dueDate, "dd/MM/yyyy", { locale: vi })}`
-        : "Ngày hạn đã được xóa",
+      description: `Ngày hạn của thẻ đã được đặt thành ${format(newDueDate, "dd/MM/yyyy HH:mm", { locale: vi })}`,
     })
   }
 
@@ -150,10 +164,14 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
     setSelectedMembers(newMembers)
     onUpdate({ ...card, members: newMembers })
 
+    // Hiển thị thông báo
     toast({
       title: isMemberSelected ? "Đã xóa thành viên" : "Đã thêm thành viên",
       description: isMemberSelected ? `Đã xóa ${member.name} khỏi thẻ này` : `Đã thêm ${member.name} vào thẻ này`,
     })
+
+    // Đóng popover sau khi thêm thành viên nếu người dùng muốn
+    // setIsMemberPickerOpen(false)
   }
 
   // Handle label selection
@@ -170,6 +188,7 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
     setSelectedLabels(newLabels)
     onUpdate({ ...card, labels: newLabels })
 
+    // Hiển thị thông báo
     toast({
       title: isLabelSelected ? "Đã xóa nhãn" : "Đã thêm nhãn",
       description: isLabelSelected
@@ -237,6 +256,33 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
+  }
+
+  // Handle editing label
+  const handleEditLabel = (label: CardLabel) => {
+    setEditingLabelId(label.id)
+    setEditingLabelName(label.name || "")
+  }
+
+  // Handle save label edit
+  const handleSaveLabelEdit = () => {
+    if (!editingLabelId) return
+
+    const updatedLabels = selectedLabels.map((label) => {
+      if (label.id === editingLabelId) {
+        return { ...label, name: editingLabelName }
+      }
+      return label
+    })
+
+    setSelectedLabels(updatedLabels)
+    onUpdate({ ...card, labels: updatedLabels })
+    setEditingLabelId(null)
+
+    toast({
+      title: "Đã cập nhật nhãn",
+      description: `Đã đổi tên nhãn thành "${editingLabelName}"`,
+    })
   }
 
   // Available labels
@@ -461,7 +507,7 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                     onClick={() => setIsDatePickerOpen(true)}
                   >
                     <CalendarIcon className="h-4 w-4" />
-                    <span>{format(dueDate, "dd/MM/yyyy", { locale: vi })}</span>
+                    <span>{format(dueDate, "dd/MM/yyyy HH:mm", { locale: vi })}</span>
                   </Badge>
                 </div>
               )}
@@ -729,13 +775,38 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                               onCheckedChange={() => handleLabelToggle(label)}
                               className="h-5 w-5"
                             />
-                            <div
-                              className="flex-1 h-8 flex items-center px-3 rounded cursor-pointer"
-                              style={{ backgroundColor: label.color }}
-                              onClick={() => handleLabelToggle(label)}
-                            >
-                              <span className="text-sm text-white font-medium">{label.name || " "}</span>
-                            </div>
+                            {editingLabelId === label.id ? (
+                              <div className="flex-1 flex items-center gap-2">
+                                <Input
+                                  value={editingLabelName}
+                                  onChange={(e) => setEditingLabelName(e.target.value)}
+                                  className="h-8"
+                                  autoFocus
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleSaveLabelEdit()
+                                    if (e.key === "Escape") setEditingLabelId(null)
+                                  }}
+                                />
+                                <Button size="sm" onClick={handleSaveLabelEdit}>
+                                  Lưu
+                                </Button>
+                              </div>
+                            ) : (
+                              <div
+                                className="flex-1 h-8 flex items-center justify-between px-3 rounded cursor-pointer"
+                                style={{ backgroundColor: label.color }}
+                              >
+                                <span className="text-sm text-white font-medium">{label.name || " "}</span>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-6 w-6 text-white hover:bg-white/20"
+                                  onClick={() => handleEditLabel(label)}
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         )
                       })}

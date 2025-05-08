@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { DragDropContext, Droppable, Draggable, type DropResult } from "react-beautiful-dnd"
 import { useToast } from "@/hooks/use-toast"
+import { format } from "date-fns"
+import { vi } from "date-fns/locale"
 
 // Import boardsData
 import { boardsData } from "../boards/data"
@@ -464,6 +466,9 @@ export default function BoardPage({ params }: { params: { id: string } }) {
 
     // Update the selected card
     setSelectedCard(updatedCard)
+
+    // Trong ứng dụng thực tế, bạn sẽ gọi API để cập nhật thẻ
+    // updateCard(updatedCard.id, updatedCard)
   }
 
   // Xử lý khi kéo thả kết thúc
@@ -664,7 +669,7 @@ export default function BoardPage({ params }: { params: { id: string } }) {
                               >
                                 {/* Labels */}
                                 {card.labels && card.labels.length > 0 && (
-                                  <div className="flex gap-1 mb-2">
+                                  <div className="flex gap-1 mb-2 flex-wrap">
                                     {Array.isArray(card.labels) && typeof card.labels[0] === "string"
                                       ? // If labels are just strings (colors)
                                         card.labels.map((label, index) => (
@@ -699,7 +704,7 @@ export default function BoardPage({ params }: { params: { id: string } }) {
                                         <Clock className="h-3 w-3 mr-1" />
                                         <span>
                                           {card.dueDate instanceof Date
-                                            ? card.dueDate.toLocaleDateString("vi-VN")
+                                            ? format(card.dueDate, "dd/MM HH:mm", { locale: vi })
                                             : card.dueDate}
                                         </span>
                                       </div>
