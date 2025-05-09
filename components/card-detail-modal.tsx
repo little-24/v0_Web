@@ -7,10 +7,9 @@ import { Dialog, DialogContent } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { format } from "date-fns"
 import { vi } from "date-fns/locale"
-import { CalendarIcon, User, Tag, Paperclip, X, Edit, Plus, Users, Clock } from "lucide-react"
+import { CalendarIcon, User, Tag, Paperclip, X, Edit, Plus, Users, Clock, Check } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -85,6 +84,8 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
   const [isCreatingLabel, setIsCreatingLabel] = useState(false)
   const [editingLabelId, setEditingLabelId] = useState<string | null>(null)
   const [editingLabelName, setEditingLabelName] = useState("")
+  const [startDateInput, setStartDateInput] = useState("")
+  const [dueDateInput, setDueDateInput] = useState("")
 
   // This will focus the title input when editing mode is enabled
   useEffect(() => {
@@ -99,6 +100,15 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
       descriptionTextareaRef.current.focus()
     }
   }, [isEditingDescription])
+
+  // Update due date input when dueDate changes
+  useEffect(() => {
+    if (dueDate) {
+      setDueDateInput(format(dueDate, "dd/MM/yyyy", { locale: vi }))
+    } else {
+      setDueDateInput("")
+    }
+  }, [dueDate])
 
   // Handle title edit submission
   const handleTitleSubmit = () => {
@@ -169,9 +179,6 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
       title: isMemberSelected ? "Đã xóa thành viên" : "Đã thêm thành viên",
       description: isMemberSelected ? `Đã xóa ${member.name} khỏi thẻ này` : `Đã thêm ${member.name} vào thẻ này`,
     })
-
-    // Đóng popover sau khi thêm thành viên nếu người dùng muốn
-    // setIsMemberPickerOpen(false)
   }
 
   // Handle label selection
@@ -473,12 +480,12 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
             {/* Left column - main content */}
             <div className="md:col-span-2 space-y-6">
               {/* Labels section */}
-              {selectedLabels.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Tag className="h-4 w-4 mr-2" />
-                    <span>Nhãn</span>
-                  </div>
+              <div className="space-y-2">
+                <div className="flex items-center text-sm text-gray-600">
+                  <Tag className="h-4 w-4 mr-2" />
+                  <span>Nhãn</span>
+                </div>
+                {selectedLabels.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {selectedLabels.map((label) => (
                       <Badge
@@ -491,16 +498,23 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                       </Badge>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div
+                    className="p-2 border border-dashed rounded-md text-gray-500 cursor-pointer hover:bg-gray-50"
+                    onClick={() => setIsLabelPickerOpen(true)}
+                  >
+                    Nhấn để thêm nhãn
+                  </div>
+                )}
+              </div>
 
               {/* Due date display */}
-              {dueDate && (
-                <div className="space-y-2">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Clock className="h-4 w-4 mr-2" />
-                    <span>Ngày hạn</span>
-                  </div>
+              <div className="space-y-2">
+                <div className="flex items-center text-sm text-gray-600">
+                  <Clock className="h-4 w-4 mr-2" />
+                  <span>Ngày hạn</span>
+                </div>
+                {dueDate ? (
                   <Badge
                     variant="outline"
                     className="px-3 py-1 cursor-pointer flex items-center gap-2 w-fit"
@@ -509,19 +523,30 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                     <CalendarIcon className="h-4 w-4" />
                     <span>{format(dueDate, "dd/MM/yyyy HH:mm", { locale: vi })}</span>
                   </Badge>
-                </div>
-              )}
+                ) : (
+                  <div
+                    className="p-2 border border-dashed rounded-md text-gray-500 cursor-pointer hover:bg-gray-50"
+                    onClick={() => setIsDatePickerOpen(true)}
+                  >
+                    Nhấn để thêm ngày hạn
+                  </div>
+                )}
+              </div>
 
               {/* Members section */}
-              {selectedMembers.length > 0 && (
-                <div className="space-y-2">
-                  <div className="flex items-center text-sm text-gray-600">
-                    <Users className="h-4 w-4 mr-2" />
-                    <span>Thành viên</span>
-                  </div>
+              <div className="space-y-2">
+                <div className="flex items-center text-sm text-gray-600">
+                  <Users className="h-4 w-4 mr-2" />
+                  <span>Thành viên</span>
+                </div>
+                {selectedMembers.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {selectedMembers.map((member) => (
-                      <div key={member.id} className="flex items-center gap-2 bg-gray-100 rounded-full pl-1 pr-3 py-1">
+                      <div
+                        key={member.id}
+                        className="flex items-center gap-2 bg-gray-100 rounded-full pl-1 pr-3 py-1 cursor-pointer hover:bg-gray-200"
+                        onClick={() => setIsMemberPickerOpen(true)}
+                      >
                         <Avatar className="h-6 w-6">
                           <AvatarImage src={member.avatar || "/placeholder.svg"} alt={member.name} />
                           <AvatarFallback>{member.initials}</AvatarFallback>
@@ -530,8 +555,15 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <div
+                    className="p-2 border border-dashed rounded-md text-gray-500 cursor-pointer hover:bg-gray-50"
+                    onClick={() => setIsMemberPickerOpen(true)}
+                  >
+                    Nhấn để thêm thành viên
+                  </div>
+                )}
+              </div>
 
               {/* Description section */}
               <div className="space-y-2">
@@ -631,7 +663,12 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                     ))}
                   </div>
                 ) : (
-                  <div className="text-sm text-gray-500 italic">Chưa có tệp đính kèm nào.</div>
+                  <div
+                    className="p-2 border border-dashed rounded-md text-gray-500 cursor-pointer hover:bg-gray-50"
+                    onClick={handleFileUpload}
+                  >
+                    Nhấn để thêm tệp đính kèm
+                  </div>
                 )}
               </div>
             </div>
@@ -651,17 +688,11 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
               </Button>
 
               {/* Members button */}
-              <Popover open={isMemberPickerOpen} onOpenChange={setIsMemberPickerOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Users className="h-4 w-4 mr-2" />
-                    Thành viên
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0" side="right" align="start">
-                  <div className="p-4 border-b">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-medium">Thành viên</h3>
+              <Dialog open={isMemberPickerOpen} onOpenChange={setIsMemberPickerOpen}>
+                <DialogContent className="sm:max-w-md">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium">Thành viên</h3>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -677,73 +708,51 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                       value={searchMember}
                       onChange={(e) => setSearchMember(e.target.value)}
                     />
-                  </div>
 
-                  <div className="p-2 max-h-[300px] overflow-y-auto">
-                    {selectedMembers.length > 0 && (
-                      <div className="mb-4">
-                        <div className="text-sm text-gray-600 mb-1 px-2">Thành viên của thẻ</div>
-                        {selectedMembers.map((member) => (
-                          <div
-                            key={member.id}
-                            className="flex items-center justify-between p-2 bg-gray-100 rounded mb-1"
-                          >
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-6 w-6">
-                                <AvatarImage src={member.avatar || "/placeholder.svg"} alt={member.name} />
-                                <AvatarFallback>{member.initials}</AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm">{member.name}</span>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-6 w-6"
+                    <div className="space-y-4">
+                      <div className="text-sm font-medium">Thành viên của bảng</div>
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                        {filteredBoardMembers.map((member) => {
+                          const isMemberSelected = selectedMembers.some((m) => m.id === member.id)
+                          return (
+                            <div
+                              key={member.id}
+                              className={`flex items-center justify-between p-2 rounded cursor-pointer ${
+                                isMemberSelected ? "bg-blue-50" : "hover:bg-gray-100"
+                              }`}
                               onClick={() => handleMemberToggle(member)}
                             >
-                              <X className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <div>
-                      <div className="text-sm text-gray-600 mb-1 px-2">Thành viên của bảng</div>
-                      {filteredBoardMembers
-                        .filter((member) => !selectedMembers.some((m) => m.id === member.id))
-                        .map((member) => (
-                          <div
-                            key={member.id}
-                            className="flex items-center justify-between p-2 hover:bg-gray-100 rounded cursor-pointer"
-                            onClick={() => handleMemberToggle(member)}
-                          >
-                            <div className="flex items-center gap-2">
-                              <Avatar className="h-6 w-6">
-                                <AvatarImage src={member.avatar || "/placeholder.svg"} alt={member.name} />
-                                <AvatarFallback>{member.initials}</AvatarFallback>
-                              </Avatar>
-                              <span className="text-sm">{member.name}</span>
+                              <div className="flex items-center gap-2">
+                                <Avatar className="h-8 w-8">
+                                  <AvatarImage src={member.avatar || "/placeholder.svg"} alt={member.name} />
+                                  <AvatarFallback>{member.initials}</AvatarFallback>
+                                </Avatar>
+                                <div>
+                                  <div className="font-medium">{member.name}</div>
+                                  {member.email && <div className="text-xs text-gray-500">{member.email}</div>}
+                                </div>
+                              </div>
+                              {isMemberSelected && <Check className="h-5 w-5 text-blue-500" />}
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
+                      </div>
                     </div>
                   </div>
-                </PopoverContent>
-              </Popover>
+                </DialogContent>
+              </Dialog>
+
+              <Button variant="outline" className="w-full justify-start" onClick={() => setIsMemberPickerOpen(true)}>
+                <Users className="h-4 w-4 mr-2" />
+                Thành viên
+              </Button>
 
               {/* Labels button */}
-              <Popover open={isLabelPickerOpen} onOpenChange={setIsLabelPickerOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start">
-                    <Tag className="h-4 w-4 mr-2" />
-                    Nhãn
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-80 p-0" side="right" align="start">
-                  <div className="p-4 border-b">
-                    <div className="flex items-center justify-between mb-4">
-                      <h3 className="font-medium">Nhãn</h3>
+              <Dialog open={isLabelPickerOpen} onOpenChange={setIsLabelPickerOpen}>
+                <DialogContent className="sm:max-w-md">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-medium">Nhãn</h3>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -759,14 +768,10 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                       value={searchLabel}
                       onChange={(e) => setSearchLabel(e.target.value)}
                     />
-                  </div>
 
-                  <div className="p-2 max-h-[300px] overflow-y-auto">
-                    <div className="text-sm text-gray-600 mb-1 px-2">Nhãn</div>
-                    <div className="space-y-1">
+                    <div className="space-y-2 max-h-[300px] overflow-y-auto">
                       {filteredLabels.map((label) => {
                         const isLabelSelected = selectedLabels.some((l) => l.id === label.id)
-
                         return (
                           <div key={label.id} className="flex items-center gap-2 p-1">
                             <Checkbox
@@ -811,11 +816,9 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                         )
                       })}
                     </div>
-                  </div>
 
-                  {isCreatingLabel ? (
-                    <div className="p-4 border-t">
-                      <div className="space-y-3">
+                    {isCreatingLabel ? (
+                      <div className="space-y-3 pt-2 border-t">
                         <Input
                           placeholder="Tên nhãn (tùy chọn)"
                           value={newLabelName}
@@ -842,29 +845,26 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                           </Button>
                         </div>
                       </div>
-                    </div>
-                  ) : (
-                    <div className="p-2 border-t">
+                    ) : (
                       <Button variant="secondary" className="w-full" onClick={handleCreateLabel}>
                         Tạo nhãn mới
                       </Button>
-                    </div>
-                  )}
-                </PopoverContent>
-              </Popover>
+                    )}
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <Button variant="outline" className="w-full justify-start" onClick={() => setIsLabelPickerOpen(true)}>
+                <Tag className="h-4 w-4 mr-2" />
+                Nhãn
+              </Button>
 
               {/* Due date button */}
-              <Popover open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start">
-                    <CalendarIcon className="h-4 w-4 mr-2" />
-                    Ngày hạn
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" side="right" align="start">
-                  <div className="p-4 border-b">
+              <Dialog open={isDatePickerOpen} onOpenChange={setIsDatePickerOpen}>
+                <DialogContent className="sm:max-w-md">
+                  <div className="space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-medium">Ngày</h3>
+                      <h3 className="text-lg font-medium">Ngày</h3>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -875,7 +875,7 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                       </Button>
                     </div>
 
-                    <div className="flex items-center justify-between mt-2">
+                    <div className="flex items-center justify-between">
                       <button onClick={goToPrevYear} className="p-1 hover:bg-gray-100 rounded">
                         «
                       </button>
@@ -890,9 +890,7 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                         »
                       </button>
                     </div>
-                  </div>
 
-                  <div className="p-2">
                     <div className="grid grid-cols-7 gap-1">
                       {dayNames.map((day) => (
                         <div key={day} className="text-center text-sm font-medium py-1">
@@ -915,10 +913,8 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                         </button>
                       ))}
                     </div>
-                  </div>
 
-                  <div className="p-4 border-t">
-                    <div className="space-y-4">
+                    <div className="space-y-4 pt-2 border-t">
                       <div className="space-y-2">
                         <div className="flex items-center">
                           <div className="text-sm font-medium">Ngày bắt đầu</div>
@@ -930,7 +926,13 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                             checked={useStartDate}
                             onCheckedChange={(checked) => setUseStartDate(!!checked)}
                           />
-                          <Input placeholder="N/T/NNNN" className="flex-1" disabled={!useStartDate} />
+                          <Input
+                            placeholder="N/T/NNNN"
+                            className="flex-1"
+                            disabled={!useStartDate}
+                            value={startDateInput}
+                            onChange={(e) => setStartDateInput(e.target.value)}
+                          />
                         </div>
                       </div>
 
@@ -948,12 +950,7 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                             className="h-5 w-5"
                           />
                           <div className="flex gap-2 flex-1">
-                            <Input
-                              value={dueDate ? format(dueDate, "dd/MM/yyyy", { locale: vi }) : ""}
-                              placeholder="N/T/NNNN"
-                              className="flex-1"
-                              readOnly
-                            />
+                            <Input value={dueDateInput} placeholder="N/T/NNNN" className="flex-1" readOnly />
                             <Input
                               placeholder="19:00"
                               className="w-24"
@@ -998,8 +995,13 @@ export function CardDetailModal({ isOpen, onClose, card, boardMembers, onUpdate 
                       </div>
                     </div>
                   </div>
-                </PopoverContent>
-              </Popover>
+                </DialogContent>
+              </Dialog>
+
+              <Button variant="outline" className="w-full justify-start" onClick={() => setIsDatePickerOpen(true)}>
+                <CalendarIcon className="h-4 w-4 mr-2" />
+                Ngày hạn
+              </Button>
 
               {/* Attachment button */}
               <Button variant="outline" className="w-full justify-start" onClick={handleFileUpload}>
